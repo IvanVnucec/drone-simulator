@@ -1,5 +1,11 @@
 #pragma once
 
+#include "Eigen/Core"
+
+using Eigen::Vector3d;
+using Eigen::Matrix3d;
+using Eigen::Array3d;
+
 struct DroneParameters {
     double g;    // m/s2
     double m;    // kg
@@ -18,8 +24,15 @@ struct DroneParameters {
 class Drone {
 private:
     DroneParameters m_params;
+    Vector3d m_xyz_dd;
+    Vector3d m_eta;
+    Array3d m_w_motors;
+
+    Vector3d getTotalThrust();
+    Matrix3d getRotationMatrix();
 
 public:
     Drone(DroneParameters params);
+    void step();
 
 };

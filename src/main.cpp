@@ -22,5 +22,9 @@ int main()
 
     Drone drone(drone_params);
 
+    for (int i = 0; i < 1000; i++) {
+        drone.step();
+    }
+
     return 0;
 }

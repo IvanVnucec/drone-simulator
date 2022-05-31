@@ -4,7 +4,6 @@
 
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
-using Eigen::Array3d;
 
 struct DroneParameters {
     double g;    // m/s2
@@ -23,13 +22,20 @@ struct DroneParameters {
 
 class Drone {
 private:
-    DroneParameters m_params;
-    Vector3d m_xyz_dd;
-    Vector3d m_eta;
-    Array3d m_w_motors;
+    DroneParameters m_fix;
+    Vector3d m_pos;
+    Vector3d m_vel;
+    Vector3d m_acc;
+
+    Vector3d m_ang_pos;
+    Vector3d m_ang_vel;
+    Vector3d m_ang_acc;
+    
+    Vector3d m_motor_vel;
 
     Vector3d getTotalThrust();
     Matrix3d getRotationMatrix();
+
 
 public:
     Drone(DroneParameters params);

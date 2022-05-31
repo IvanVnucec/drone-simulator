@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Eigen/Core"
+#include "rk4.hpp"
 
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::Matrix3d;
 
 struct DroneParameters {
@@ -18,6 +20,7 @@ struct DroneParameters {
     double Ax;   // kg/s
     double Ay;   // kg/s
     double Az;   // kg/s
+    double dt;   // s
 };
 
 class Drone {
@@ -31,10 +34,17 @@ private:
     Vector3d m_ang_vel;
     Vector3d m_ang_acc;
     
-    Vector3d m_motor_vel;
+    Vector4d m_motor_vel;
+
+    Rk4<Vector3d> m_rk4;
 
     Vector3d getTotalThrust();
     Matrix3d getRotationMatrix();
+    Matrix3d getJacobian();
+    Matrix3d getCoriolisTerm();
+    Matrix3d getInerToBodyTransfMatrixForAngVel();
+    Matrix3d getInertiaMatrix();
+    Vector3d getExternalTorque();
 
 
 public:

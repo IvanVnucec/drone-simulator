@@ -1,9 +1,17 @@
 #include "drone.hpp"
 #include <cmath>
 #include "Eigen/Core"
+#include "Eigen/LU"
+#include "rk4.hpp"
+#include <iostream>
+
 
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
+
+
+Vector3d f(double t, Vector3d y);
+
 
 Drone::Drone(DroneParameters params) : 
 m_fix{ params },
@@ -13,9 +21,9 @@ m_acc{ Vector3d::Zero() },
 m_ang_pos{ Vector3d::Zero() },
 m_ang_vel{ Vector3d::Zero() },
 m_ang_acc{ Vector3d::Zero() },
-m_motor_vel{ Vector3d::Zero() }
+m_motor_vel{ Vector4d::Zero() },
+m_rk4{ Rk4<Vector3d>(m_fix.dt, f, Vector3d::Zero(), 0.0) }
 {
-
 }
 
 Vector3d Drone::getTotalThrust() {
@@ -44,10 +52,106 @@ Matrix3d Drone::getRotationMatrix() {
     };
 }
 
+Matrix3d Drone::getInerToBodyTransfMatrixForAngVel() {
+    double Cphi = std::cos(m_ang_pos(0));
+    double Sphi = std::sin(m_ang_pos(0));
+
+    double Ctheta = std::cos(m_ang_pos(1));
+    double Ttheta = std::tan(m_ang_pos(1));
+
+    return Matrix3d{
+        { 1.0, Sphi*Ttheta, Cphi*Ttheta },
+        { 0.0, Cphi, -Sphi },
+        { 0.0, Sphi/Ctheta, Cphi/Ctheta }
+    };
+}
+
+Matrix3d Drone::getInertiaMatrix() {
+    return Matrix3d{
+        { m_fix.Ixx, 0.0, 0.0 },
+        { 0.0, m_fix.Iyy, 0.0 },
+        { 0.0, 0.0, m_fix.Izz }
+    }; 
+}
+
+Matrix3d Drone::getJacobian() {
+    Matrix3d w = getInerToBodyTransfMatrixForAngVel();
+    Matrix3d I = getInertiaMatrix();
+
+    return w.transpose() * I * w;
+}
+
+Matrix3d Drone::getCoriolisTerm() {
+    double Cphi = std::cos(m_ang_pos(0));
+    double Sphi = std::sin(m_ang_pos(0));
+
+    double Ctheta = std::cos(m_ang_pos(1));
+    double Stheta = std::sin(m_ang_pos(1));
+    
+    double phi_dot = m_ang_vel(0);
+    double theta_dot = m_ang_vel(1);
+    double psi_dot = m_ang_vel(2);
+
+    double Ixx = m_fix.Ixx;
+    double Iyy = m_fix.Iyy;
+    double Izz = m_fix.Izz;
+
+    double c11 = 0.0;
+    double c12 = (Iyy - Izz)*(theta_dot*Cphi*Sphi + psi_dot*Sphi*Sphi*Ctheta) + (Izz - Iyy)*psi_dot*Cphi*Cphi*Ctheta - Ixx*psi_dot*Ctheta;
+    double c13 = (Izz - Iyy)*psi_dot*Cphi*Sphi*Ctheta*Ctheta;
+
+    double c21 = (Izz - Iyy)*(theta_dot*Cphi*Sphi + psi_dot*Sphi*Ctheta) + (Iyy - Izz)*psi_dot*Cphi*Cphi*Ctheta + Ixx*psi_dot*Ctheta;;
+    double c22 = (Izz - Iyy)*phi_dot*Cphi*Sphi;
+    double c23 = -Ixx*psi_dot*Stheta*Ctheta + Iyy*psi_dot*Sphi*Sphi*Stheta*Ctheta + Izz*psi_dot*Cphi*Cphi*Stheta*Ctheta;
+
+    double c31 = (Iyy - Izz)*psi_dot*Ctheta*Ctheta*Sphi*Cphi-Ixx*theta_dot*Ctheta;
+    double c32 = (Izz - Iyy)*(theta_dot*Cphi*Sphi*Stheta + phi_dot*Sphi*Sphi*Ctheta) + (Iyy - Izz)*phi_dot*Cphi*Cphi*Ctheta + Ixx*psi_dot*Stheta*Ctheta - Iyy*psi_dot*Sphi*Sphi*Stheta*Ctheta - Izz*psi_dot*Cphi*Cphi*Stheta*Ctheta;
+    double c33 = (Iyy - Izz)*phi_dot*Cphi*Sphi*Ctheta*Ctheta - Iyy*theta_dot*Sphi*Sphi*Ctheta*Stheta - Izz*theta_dot*Cphi*Cphi*Ctheta*Stheta + Ixx*theta_dot*Ctheta*Stheta;
+
+    return Matrix3d{
+        {c11, c12, c13},
+        {c21, c22, c23},
+        {c31, c32, c33}
+    };
+}
+
+Vector3d Drone::getExternalTorque() {
+    double l = m_fix.l;
+    double k = m_fix.k;
+    double w1 = m_motor_vel(0);
+    double w2 = m_motor_vel(1);
+    double w3 = m_motor_vel(2);
+    double w4 = m_motor_vel(3);
+    double b = m_fix.b;
+    double IM = m_fix.IM;
+    double tau_m1 = b * w1*w1 + IM*w1;
+    double tau_m2 = b * w2*w2 + IM*w2;
+    double tau_m3 = b * w3*w3 + IM*w3;
+    double tau_m4 = b * w4*w4 + IM*w4;
+
+    return Vector3d{
+        l*k*(w4*w4 - w2*w2),
+        l*k*(w3*w3 - w1*w1),
+        tau_m1 + tau_m2 + tau_m3 + tau_m4
+    };
+}
+
 void Drone::step() {
     Vector3d TB = getTotalThrust();
     Matrix3d R = getRotationMatrix();
     Vector3d G = Vector3d(0, 0, -m_fix.g);
-
     m_acc = (G + R * TB) / m_fix.m;
+
+    Vector3d TauB = getExternalTorque();
+    Matrix3d J = getJacobian();
+    Matrix3d C = getCoriolisTerm();
+    m_ang_acc = J.inverse() * (TauB - C * m_ang_vel);
+
+    // TODO: with two rk4 calculate ang_vel and ang_pos
+    Vector3d out = m_rk4.step();
+    std::cout << "out: " << out.transpose() << std::endl;
+}
+
+Vector3d f(double t, Vector3d y) {
+    return Vector3d::Zero();
 }

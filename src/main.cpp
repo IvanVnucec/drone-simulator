@@ -18,6 +18,7 @@ int main()
         .Ax  = 0.25,     // kg/s
         .Ay  = 0.25,     // kg/s
         .Az  = 0.25,     // kg/s
+        .dt  = 0.1,      // s
     };
 
     Drone drone(drone_params);

@@ -1,16 +1,17 @@
 #include "drone.hpp"
 #include <cmath>
+#include <iostream>
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "rk4.hpp"
-#include <iostream>
+#include "RungeKutta/rk2ndODE.hpp"
 
 
 using Eigen::Vector3d;
 using Eigen::Matrix3d;
 
 
-Vector3d f(double t, Vector3d y);
+Vector3d forward_pos_vel(double t, Vector3d y, Vector3d y_dot);
+Vector3d forward_ang_pos_vel(double t, Vector3d y, Vector3d y_dot);
 
 
 Drone::Drone(DroneParameters params) : 
@@ -22,7 +23,8 @@ m_ang_pos{ Vector3d::Zero() },
 m_ang_vel{ Vector3d::Zero() },
 m_ang_acc{ Vector3d::Zero() },
 m_motor_vel{ Vector4d::Zero() },
-m_rk4{ Rk4<Vector3d>(m_fix.dt, f, Vector3d::Zero(), 0.0) }
+m_rk_pos_vel{ Rk2ndODE<Vector3d>(m_fix.dt, forward_pos_vel, m_pos, m_vel, 0.0) },
+m_rk_ang_pos_vel{ Rk2ndODE<Vector3d>(m_fix.dt, forward_ang_pos_vel, m_ang_pos, m_ang_vel, 0.0) }
 {
 }
 
@@ -147,11 +149,28 @@ void Drone::step() {
     Matrix3d C = getCoriolisTerm();
     m_ang_acc = J.inverse() * (TauB - C * m_ang_vel);
 
-    // TODO: with two rk4 calculate ang_vel and ang_pos
-    Vector3d out = m_rk4.step();
-    std::cout << "out: " << out.transpose() << std::endl;
+    m_rk_pos_vel.step();
+    m_pos = m_rk_pos_vel.get_y();
+    m_vel = m_rk_pos_vel.get_y_dot();
+
+    m_rk_ang_pos_vel.step();
+    Vector3d m_ang_pos = m_rk_ang_pos_vel.get_y();
+    Vector3d m_ang_vel = m_rk_ang_pos_vel.get_y_dot();
+    
+    std::cout << "t: " << m_rk_pos_vel.get_time() << std::endl;
+    std::cout << "pos: " << m_pos.transpose() << std::endl;
+    std::cout << "vel: " << m_vel.transpose() << std::endl;
+    std::cout << "ang_pos: " << m_ang_pos.transpose() << std::endl;
+    std::cout << "ang_vel: " << m_ang_vel.transpose() << std::endl;
+    std::cout << std::endl;
 }
 
-Vector3d f(double t, Vector3d y) {
-    return Vector3d::Zero();
+Vector3d forward_pos_vel(double t, Vector3d y, Vector3d y_dot) {
+    // TODO: add correct equation
+    return Vector3d::Constant(1.0);
+}
+
+Vector3d forward_ang_pos_vel(double t, Vector3d y, Vector3d y_dot) {
+    // TODO: add correct equation
+    return Vector3d::Constant(1.0);
 }

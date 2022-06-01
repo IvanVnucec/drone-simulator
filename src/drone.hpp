@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Eigen/Core"
-#include "rk4.hpp"
+#include "RungeKutta/rk2ndODE.hpp"
 
 using Eigen::Vector3d;
 using Eigen::Vector4d;
@@ -36,7 +36,8 @@ private:
     
     Vector4d m_motor_vel;
 
-    Rk4<Vector3d> m_rk4;
+    Rk2ndODE<Vector3d> m_rk_pos_vel;
+    Rk2ndODE<Vector3d> m_rk_ang_pos_vel;
 
     Vector3d getTotalThrust();
     Matrix3d getRotationMatrix();

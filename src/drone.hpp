@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Eigen/Core"
-#include "RungeKutta/rk2ndODE.hpp"
+#include "rk2ndODE.hpp"
 
 using Eigen::Vector3d;
 using Eigen::Vector4d;

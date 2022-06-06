@@ -3,7 +3,7 @@
 #include <iostream>
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "RungeKutta/rk2ndODE.hpp"
+#include "rk2ndODE.hpp"
 
 
 using Eigen::Vector3d;

@@ -1,5 +1,5 @@
 #include "minunit.h"
-#include "RungeKutta/rk2ndODE.hpp"
+#include "rk2ndODE.hpp"
 
 #define TIME_END  (8.0)
 #define TIME_STEP (0.01)
@@ -33,6 +33,6 @@ int main(int argc, char *argv[]) {
 	MU_RUN_SUITE(test_suite);
 
 	MU_REPORT();
-    
+
 	return MU_EXIT_CODE;
 }

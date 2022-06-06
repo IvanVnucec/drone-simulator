@@ -7,3 +7,11 @@ add_compile_options(-Wall -Werror -O0 -ggdb)
 
 add_subdirectory(src)
 target_include_directories(drone-simulator PRIVATE libs)
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+
+if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME OR MYPROJECT_BUILD_TESTING) AND BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

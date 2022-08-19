@@ -1,5 +1,0 @@
-[requires]
-bullet3/3.24
-
-[generators]
-cmake

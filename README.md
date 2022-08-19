@@ -8,6 +8,7 @@
 ### Install the Chrono library
 ```
 git clone https://github.com/projectchrono/chrono --recurse-submodules
+sudo apt-get update
 sudo apt-get install -y libeigen3-dev libirrlicht-dev libopenmpi-dev libthrust-dev libxxf86vm-dev libgl1-mesa-dev freeglut3 freeglut3-dev ninja-build
 cd chrono/
 mkdir build && cd build

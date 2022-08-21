@@ -1,12 +1,12 @@
+#include "motor.hpp"
+
 #include "chrono/physics/ChSystemNSC.h"
 #include "chrono/physics/ChBodyEasy.h"
-#include "chrono/physics/ChLinkMotorRotationTorque.h"
 
 #include "chrono/core/ChRealtimeStep.h"
 
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
-// Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;
 
@@ -63,40 +63,10 @@ int main(int argc, char *argv[])
 
     // Connect the rotor and the stator and add the motor to the system:
     rotmotor->Initialize(rotor,               // body A (slave)
-                          stator,              // body B (master)
-                          ChFrame<>(positionA) // motor frame, in abs. coords
+                         stator,              // body B (master)
+                         ChFrame<>(positionA) // motor frame, in abs. coords
     );
-    sys.Add(rotmotor);
 
-    // Implement our custom  torque function.
-    // We could use pre-defined ChFunction classes like sine, constant, ramp, etc.,
-    // but in this example we show how to implement a custom function: a
-    // torque(speed) function that represents a three-phase electric induction motor.
-    // Just inherit from ChFunction and implement Get_y() so that it returns different
-    // values (regrdless of time x) depending only on the slip speed of the motor:
-    class MyTorqueCurve : public ChFunction
-    {
-    public:
-        // put here some data that you need when evaluating y(x):
-        double E2; // voltage on coil, etc.
-        double R2;
-        double X2;
-        double ns;
-        std::shared_ptr<ChLinkMotorRotationTorque> mymotor;
-
-        virtual MyTorqueCurve *Clone() const override { return new MyTorqueCurve(*this); }
-
-        virtual double Get_y(double x) const override
-        {
-            // The three-phase torque(speed) model
-            double w = mymotor->GetMotorRot_dt();
-            double s = (ns - w) / ns; // slip
-            double T =
-                (3.0 / 2 * CH_C_PI * ns) * (s * E2 * E2 * R2) / (R2 * R2 + pow(s * X2, 2)); // electric torque curve
-            T -= w * 5;                                                                     // simulate also a viscous brake
-            return T;
-        }
-    };
     // Create the function object from our custom class, and initialize its data:
     auto mtorquespeed = chrono_types::make_shared<MyTorqueCurve>();
     mtorquespeed->E2 = 120;
@@ -107,6 +77,8 @@ int main(int argc, char *argv[])
 
     // Let the motor use this motion function as a motion profile:
     rotmotor->SetTorqueFunction(mtorquespeed);
+
+    sys.Add(rotmotor);
 
     // Create the Irrlicht visualization system
     auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();

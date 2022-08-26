@@ -1,10 +1,18 @@
 #include "chrono/physics/ChSystemNSC.h"
-#include "chrono/physics/ChBody.h"
+#include "chrono/physics/ChBodyEasy.h"
 #include "chrono/core/ChRealtimeStep.h"
 #include "chrono/physics/ChLinkDistance.h"
 #include <chrono/motion_functions/ChFunction.h>
+#include <chrono_irrlicht/ChVisualSystemIrrlicht.h>
 
 using namespace chrono;
+using namespace chrono::irrlicht;
+using namespace irr;
+using namespace irr::core;
+using namespace irr::scene;
+using namespace irr::video;
+using namespace irr::io;
+using namespace irr::gui;
 
 class Drone
 {
@@ -67,22 +75,22 @@ public:
         m_force_w->SetMode(ChForce::FORCE);
         m_force_w->SetF_z(m_funct_w);
 
-        m_body_n = std::make_shared<ChBody>();
+        m_body_n = std::make_shared<ChBodyEasyCylinder>(1.0, 1.0, 100.0, true);
         m_body_n->SetMass(1.0);
         m_body_n->SetPos(Vector(0.0, 5.0, 0.0));
         m_sys->Add(m_body_n);
 
-        m_body_e = std::make_shared<ChBody>();
+        m_body_e = std::make_shared<ChBodyEasyCylinder>(1.0, 1.0, 100.0, true);
         m_body_e->SetMass(1.0);
         m_body_e->SetPos(Vector(5.0, 0.0, 0.0));
         m_sys->Add(m_body_e);
 
-        m_body_s = std::make_shared<ChBody>();
+        m_body_s = std::make_shared<ChBodyEasyCylinder>(1.0, 1.0, 100.0, true);
         m_body_s->SetMass(1.0);
-        m_body_s->SetPos(Vector(-5.0, 0.0, 0.0));
+        m_body_s->SetPos(Vector(0.0, -5.0, 0.0));
         m_sys->Add(m_body_s);
 
-        m_body_w = std::make_shared<ChBody>();
+        m_body_w = std::make_shared<ChBodyEasyCylinder>(1.0, 1.0, 100.0, true);
         m_body_w->SetMass(1.0);
         m_body_w->SetPos(Vector(-5.0, 0.0, 0.0));
         m_sys->Add(m_body_w);
@@ -125,20 +133,42 @@ std::ostream &operator<<(std::ostream &os, const Drone &drone)
 
 int main()
 {
+    SetChronoDataPath(CHRONO_DATA_DIR);
+
     auto sys = std::make_shared<ChSystemNSC>();
     sys->Set_G_acc(Vector(0, 0, -9.80665));
 
     Drone drone(sys);
 
+    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+    vis->AttachSystem(sys.get());
+    vis->SetWindowSize(800, 600);
+    vis->SetWindowTitle("");
+    vis->Initialize();
+    vis->AddSkyBox();
+    vis->AddCamera(ChVector<>(1, 3, -7));
+    vis->AddTypicalLights();
+    vis->AddLightWithShadow(ChVector<>(20.0, 35.0, -25.0),
+                            ChVector<>(0, 0, 0), 
+                            55, 20, 55, 35, 512,
+                            ChColor(0.6f, 0.8f, 1.0f));
+    vis->EnableShadows();
+    vis->ShowInfoPanel(true);
+
     const double step_size = 5e-3;
     ChRealtimeStepTimer realtime_timer;
-    while (true)
+    while (vis->Run())
     {
+        vis->BeginScene();
+        vis->Render();
+        
         std::cout << "Time: " << sys->GetChTime() << "\n";
         std::cout << drone << "\n";
 
         sys->DoStepDynamics(step_size);
         realtime_timer.Spin(step_size);
+        
+        vis->EndScene();
     }
 
     return 0;
